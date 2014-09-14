@@ -111,11 +111,11 @@ public abstract class Socket implements ISocket {
         return rc;
     }
 
-    public int sendDirectBuffer(final ByteBuffer data) throws IOException {
-        return sendDirectBuffer(data, true);
+    public int sendByteBuffer(final ByteBuffer data) throws IOException {
+        return sendByteBuffer(data, true);
     }
 
-    public synchronized int sendDirectBuffer(final ByteBuffer data, final boolean blocking)  throws IOException{
+    public synchronized int sendByteBuffer(final ByteBuffer data, final boolean blocking)  throws IOException{
         final int socket = getNativeSocket();
 
         final int rc = NativeLibrary.nn_send(socket, data, data.limit(), blocking ? 0 : Nanomsg.constants.NN_DONTWAIT);
