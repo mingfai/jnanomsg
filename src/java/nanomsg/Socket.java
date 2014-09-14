@@ -1,18 +1,14 @@
 package nanomsg;
 
-import java.nio.charset.Charset;
-
-import com.sun.jna.Pointer;
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
-import com.sun.jna.ptr.PointerByReference;
+import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
-
-import nanomsg.NativeLibrary;
-import nanomsg.Nanomsg;
-import nanomsg.Message;
-import nanomsg.ISocket;
+import com.sun.jna.ptr.PointerByReference;
 import nanomsg.exceptions.IOException;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 
 
 public abstract class Socket implements ISocket {
@@ -103,7 +99,26 @@ public abstract class Socket implements ISocket {
      */
     public synchronized int sendBytes(final byte[] data, final boolean blocking) throws IOException {
         final int socket = getNativeSocket();
+
         final int rc = NativeLibrary.nn_send(socket, data, data.length, blocking ? 0 : Nanomsg.constants.NN_DONTWAIT);
+
+        if (rc < 0) {
+            final int errno = Nanomsg.getErrorNumber();
+            final String msg = Nanomsg.getError();
+            throw new IOException(msg, errno);
+        }
+
+        return rc;
+    }
+
+    public int sendDirectBuffer(final ByteBuffer data) throws IOException {
+        return sendDirectBuffer(data, true);
+    }
+
+    public synchronized int sendDirectBuffer(final ByteBuffer data, final boolean blocking)  throws IOException{
+        final int socket = getNativeSocket();
+
+        final int rc = NativeLibrary.nn_send(socket, data, data.limit(), blocking ? 0 : Nanomsg.constants.NN_DONTWAIT);
 
         if (rc < 0) {
             final int errno = Nanomsg.getErrorNumber();
@@ -176,6 +191,26 @@ public abstract class Socket implements ISocket {
 
         NativeLibrary.nn_freemsg(result);
         return bytesResult;
+    }
+
+    public synchronized ByteBuffer recvByteBuffer() throws IOException{
+        return recvByteBuffer(true);
+    }
+
+    public synchronized ByteBuffer recvByteBuffer(boolean blocking) throws IOException{
+        final PointerByReference ptrBuff = new PointerByReference();
+
+        final int socket = getNativeSocket();
+        final int received = NativeLibrary.nn_recv(socket, ptrBuff, Nanomsg.constants.NN_MSG, blocking ? 0: Nanomsg.constants.NN_DONTWAIT);
+
+        if (received < 0) {
+            final int errno = Nanomsg.getErrorNumber();
+            final String msg = Nanomsg.getError();
+            throw new IOException(msg, errno);
+        }
+
+        final Pointer result = ptrBuff.getValue();
+        return result.getByteBuffer(0, received);
     }
 
     /**
